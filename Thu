@@ -1,0 +1,62 @@
+#include "AESLib.h" 
+#define RXp2 16
+#define TXp2 17
+int LED = 12;
+int LED1 = 32;
+#define INPUT_BUFFER_LIMIT (128+1) 
+AESLib aesLib;
+byte aes_key[] = { 57, 36, 24, 25, 28, 86, 32, 41, 31, 36, 91, 36, 51, 74, 63, 89 };
+byte aes_iv[16] = { 0x79, 0x4E, 0x98, 0x21, 0xAE, 0xD8, 0xA6, 0xAA, 0xD7, 0x97, 0x44, 0x14, 0xAB, 0xDD, 0x9F, 0x2C };
+
+void aes_init() {
+aesLib.gen_iv(aes_iv);
+aesLib.set_paddingmode((paddingMode)0);
+}
+
+uint16_t decryptData(const char* encryptedData, uint16_t length, byte* outputBuffer, byte iv[]) {
+    uint16_t decryptedLength = aesLib.decrypt((byte*)encryptedData, length, outputBuffer, aes_key, sizeof(aes_key), iv);
+    outputBuffer[decryptedLength] = '0'; 
+    return decryptedLength;
+}
+
+void setup(){
+  Serial.begin(115200);
+  Serial2.begin(115200, SERIAL_8N1, RXp2, TXp2);
+  pinMode(LED, OUTPUT);
+  pinMode(LED1, OUTPUT);
+  aes_init();
+}
+
+void loop(){
+  if (Serial2.available() > 0) {
+    char received[2*INPUT_BUFFER_LIMIT];
+    uint16_t receivedLength = Serial2.readBytes(received, INPUT_BUFFER_LIMIT);  
+    byte decryptedData[INPUT_BUFFER_LIMIT];
+    decryptData(received, receivedLength, decryptedData, aes_iv); 
+    Serial.print("Đã nhận: ");
+      for (int i = 0; i < receivedLength; i++) {
+        if(received[i]<16) Serial.print("0"); 
+        Serial.print(received[i], HEX); 
+        Serial.print(" ");
+    }
+    Serial.println();
+switch (decryptedData[0]) {
+  case '0':
+    Serial.println("Bật đèn LED");
+    digitalWrite(LED, HIGH);
+    break;
+  case '1':
+    Serial.println("Tắt đèn LED");
+    digitalWrite(LED, LOW);
+    break;
+  case '2':
+    Serial.println("Bật đèn LED1"); 
+    digitalWrite(LED1, HIGH);
+    break;
+  case '3':
+    Serial.println("Tắt đèn LED1"); 
+    digitalWrite(LED1, LOW);
+    break;
+}
+}
+}
